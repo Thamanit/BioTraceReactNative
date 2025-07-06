@@ -1,75 +1,99 @@
-// app/(app)/Result.tsx
-
 import React, { useEffect, useState } from 'react';
-import { View, Text, StyleSheet, TouchableOpacity } from 'react-native';
-import { useRouter } from 'expo-router';
+import {
+  View, Text, StyleSheet, ScrollView, TouchableOpacity, StatusBar, Image, Platform, Dimensions
+} from 'react-native';
+import { useRouter, useLocalSearchParams } from 'expo-router';
 import { getApiURL } from '@/lib/route';
 import axios from "axios";
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
+const { height } = Dimensions.get('window');
+
 export default function Result() {
   const router = useRouter();
-
-  const [eyeResults, setEyeResults] = useState([]);
-  const [fingerprintResults, setFingerprintResults] = useState([]);
+  const { username } = useLocalSearchParams();
+  const [results, setResults] = useState<any[]>([]);
 
   const fetchResults = async () => {
     try {
-      //get token from AsyncStorage
-      let token = await AsyncStorage.getItem('token');
-      const response = await axios.get(getApiURL() + "/ml/results/all", {
+      const token = await AsyncStorage.getItem('token');
+      const response = await axios.get(getApiURL() + "/ml/results", {
         headers: {
           Authorization: `Bearer ${token}`,
         }
       });
-      const data = response.data;
-      setEyeResults(data.eyes);
-      setFingerprintResults(data.fingers);
+      setResults(response.data.results);
     } catch (error) {
-      console.error("Error fetching eye results:", error);
+      console.error("Error fetching results:", error);
     }
-  }
+  };
 
-  // ใช้ useEffect เพื่อดึงข้อมูลจาก Firebase เมื่อโหลดเพจ
   useEffect(() => {
     fetchResults();
-
-    // // ตั้งเวลาให้ดึงข้อมูลใหม่ทุกๆ 5 วินาที
-    // const interval = setInterval(() => {
-    //   fetchResults();
-    // }, 5000);
-
-    // // ล้างการตั้งเวลาเมื่อ component นี้ถูกลบ
-    // return () => clearInterval(interval);
   }, []);
 
-
-  const handleYes = () => {
-    router.replace('/Appointment'); // ไปหน้า Appointment.tsx
+  const handleLogout = () => {
+    router.replace('/LoginScreen');
   };
 
-  const handleNo = () => {
-    router.replace('/home'); // ไปหน้า HomePage.tsx
+  const handleGoHome = () => {
+    router.replace({ pathname: '/home', params: { username } });
   };
+
+  const handleYes = () => router.replace('/Appointment');
+  const handleNo = () => router.replace('/home');
 
   return (
-    <View style={styles.container}>
-      <Text style={styles.title}>Result</Text>
+    <View style={{ flex: 1, backgroundColor: '#d4f1ec' }}>
+      <StatusBar backgroundColor="#0fa36b" barStyle="light-content" translucent={false} />
+      
+      {/* Header */}
+      <View style={styles.header}>
+        <View style={styles.headerRow}>
+          <View style={styles.leftMenu}>
+            <TouchableOpacity style={styles.backButton} onPress={handleGoHome}>
+              <Text style={styles.backText}>Home</Text>
+            </TouchableOpacity>
+            <Image source={require('@/assets/images/icon.png')} style={styles.logo} />
+          </View>
 
-      <View style={styles.card}>
-        <Text style={styles.label}>Status</Text>
-        <Text style={styles.value}>{((eyeResults[0] as any)?.confidence * 100).toFixed(2)}% Chances of having diabetes</Text>
-        <Text style={styles.value}>
-          {
-            JSON.stringify(eyeResults[0])
-          }
-        </Text>
+          <View style={styles.rightMenu}>
+            <Text style={styles.menuItem}>
+              {username?.toString().toUpperCase() || 'USER'}
+            </Text>
+            <TouchableOpacity style={styles.logoutButton} onPress={handleLogout}>
+              <Text style={styles.logoutText}>LOGOUT</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+      </View>
 
-        <Text style={styles.label}>Recommendation</Text>
-        <Text style={styles.value}>Advise a healthy diet and exercise</Text>
+      {/* Content */}
+      <ScrollView contentContainerStyle={styles.scroll}>
+        <Text style={styles.title}>🩺 Diabetes Detection Results</Text>
+
+        {results.length > 0 ? results.map((item, index) => (
+          <View key={index} style={styles.card}>
+            <Text style={styles.label}>👤 Email</Text>
+            <Text style={styles.value}>{item.userEmail}</Text>
+
+            <Text style={styles.label}>🧪 Prediction</Text>
+            <Text style={styles.value}>{item.prediction}%</Text>
+
+            <Text style={styles.label}>📊 Risk Level</Text>
+            <Text style={styles.value}>{item.level}</Text>
+
+            <Text style={styles.label}>📝 Description</Text>
+            <Text style={styles.value}>{item.description}</Text>
+
+            <Text style={styles.label}>⏰ Timestamp</Text>
+            <Text style={styles.value}>{new Date(item.timestamp).toLocaleString()}</Text>
+          </View>
+        )) : (
+          <Text style={{ textAlign: 'center', marginTop: 40 }}>No results available.</Text>
+        )}
 
         <Text style={styles.question}>Need doctor appointment?</Text>
-
         <View style={styles.buttonGroup}>
           <TouchableOpacity style={[styles.button, styles.yes]} onPress={handleYes}>
             <Text style={styles.buttonText}>Yes</Text>
@@ -78,56 +102,108 @@ export default function Result() {
             <Text style={styles.buttonText}>No</Text>
           </TouchableOpacity>
         </View>
-      </View>
+
+        <View style={styles.greenBackground} />
+      </ScrollView>
     </View>
   );
 }
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: '#d4f1ec',
+  scroll: {
+    padding: 20,
+    paddingBottom: 60,
+  },
+  header: {
+    backgroundColor: '#0fa36b',
+    paddingTop: Platform.OS === 'android' ? 40 : 60,
+    paddingBottom: 20,
+  },
+  headerRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
     alignItems: 'center',
-    paddingTop: 80,
     paddingHorizontal: 20,
   },
-  title: {
-    fontSize: 26,
+  leftMenu: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+  },
+  backButton: {
+    padding: 5,
+    paddingRight: 10,
+  },
+  backText: {
+    color: '#fff',
+    fontSize: 20,
     fontWeight: 'bold',
-    marginBottom: 30,
+  },
+  logo: {
+    width: 60,
+    height: 50,
+    resizeMode: 'contain',
+  },
+  rightMenu: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+  },
+  menuItem: {
+    color: '#fff',
+    fontWeight: 'bold',
+    marginRight: 10,
+  },
+  logoutButton: {
+    backgroundColor: '#d62828',
+    paddingHorizontal: 15,
+    paddingVertical: 5,
+    borderRadius: 8,
+  },
+  logoutText: {
+    color: '#fff',
+    fontWeight: 'bold',
+  },
+  title: {
+    fontSize: 24,
+    fontWeight: 'bold',
     color: '#0fa36b',
+    marginBottom: 20,
+    textAlign: 'center',
   },
   card: {
-    backgroundColor: '#1ca06f',
-    borderRadius: 20,
-    padding: 20,
-    width: '100%',
+    backgroundColor: '#ffffff',
+    borderRadius: 12,
+    padding: 15,
+    marginBottom: 20,
     shadowColor: '#000',
-    shadowOpacity: 0.2,
-    shadowRadius: 10,
+    shadowOpacity: 0.15,
+    shadowOffset: { width: 0, height: 4 },
+    shadowRadius: 6,
+    elevation: 4,
   },
   label: {
     fontWeight: 'bold',
-    fontSize: 16,
-    color: '#fff',
-    marginTop: 10,
+    fontSize: 15,
+    marginTop: 8,
+    color: '#1c6758',
   },
   value: {
     fontSize: 15,
-    color: '#fff',
-    marginBottom: 10,
+    color: '#333',
+    marginBottom: 4,
   },
   question: {
     marginTop: 20,
-    fontWeight: 'bold',
-    color: '#fff',
     fontSize: 16,
+    fontWeight: 'bold',
     textAlign: 'center',
   },
   buttonGroup: {
     flexDirection: 'row',
     justifyContent: 'space-around',
     marginTop: 15,
+    marginBottom: 30,
   },
   button: {
     paddingVertical: 10,
@@ -144,5 +220,17 @@ const styles = StyleSheet.create({
     color: 'white',
     fontWeight: 'bold',
     fontSize: 16,
+  },
+  greenBackground: {
+    position: 'absolute',
+    bottom: 0,
+    left: 0,
+    right: 0,
+    height: height / 2,
+    backgroundColor: '#1ca06f',
+    borderTopLeftRadius: 30,
+    borderTopRightRadius: 30,
+    elevation: -1,
+    zIndex: -1,
   },
 });

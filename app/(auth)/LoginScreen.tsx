@@ -17,13 +17,19 @@ export default function SignInScreen() {
   const authContext = useContext(AuthContext);
   const router = useRouter();
 
-  const handleLogin = async () => {
-    if (username && password) {
-      await authContext?.login({ username, password });
+const handleLogin = async () => {
+  if (username && password) {
+    const success = await authContext?.login({ username, password });
+    if (success) {
+      router.push('/home');
     } else {
-      alert('กรุณากรอกชื่อผู้ใช้และรหัสผ่าน');
+      alert('เข้าสู่ระบบไม่สำเร็จ');
     }
-  };
+  } else {
+    alert('กรุณากรอกชื่อผู้ใช้และรหัสผ่าน');
+  }
+};
+
 
   const handleRegisterNav = () => {
     router.push('/RegisterScreen');
@@ -65,7 +71,6 @@ export default function SignInScreen() {
 
         <TouchableOpacity style={styles.registerButton} onPress={handleLogin}>
           <Text style={styles.registerText}>Login</Text>
-          <button > </button>router.push('/home');
         </TouchableOpacity>
 
         <TouchableOpacity style={styles.linkButton} onPress={handleRegisterNav}>

@@ -28,25 +28,29 @@ export default function Dashboard() {
 
   const [showSettings, setShowSettings] = useState(false);
 
-  const [eyeResults, setEyeResults] = useState([]);
-  const [fingerprintResults, setFingerprintResults] = useState([]);
-  const [diabeteResults, setDiabetesResults] = useState<{email: string, prediction: number}[]>([]);
+  const [results, setResults] = useState([]);
+// แก้ไข type ของ diabeteResults ให้มี timestamp ด้วย
+const [diabeteResults, setDiabetesResults] = useState<{email: string, prediction: number, timestamp: string, level: string, description: string}[]>([]);
 
-  useEffect(() => {
-    const newDiabetesResults = [];
-    for (let i=0; i < eyeResults.length; i++) {
-      const eye = eyeResults[i] as any;
-      const eyeConfidence = eye?.confidence || 0;
-      const fingerprint = fingerprintResults[i] as any;
-      const fingerprintConfidence = fingerprint?.confidence || 0;
+useEffect(() => {
+  const newDiabetesResults = [];
+  for (let i=0; i < results.length; i++) {
+    const result = results[i] as any;
+    const prediction = result?.prediction || -1;
+    const level = result?.level || 'unknown';
+    const description = result?.description || 'No description available';
 
-      newDiabetesResults.push({
-        email: eye?.userEmail || fingerprint?.userEmail || "unknown",
-        prediction: (eyeConfidence + fingerprintConfidence) / 2,
-      });
-    }
-    setDiabetesResults(newDiabetesResults);
-  }, [eyeResults, fingerprintResults]);
+    newDiabetesResults.push({
+      email: result?.userEmail || "unknown",
+      prediction,
+      level,
+      description,
+      timestamp: result?.timestamp || "N/A",
+    });
+  }
+  setDiabetesResults(newDiabetesResults);
+}, [results]);
+
 
   const fetchResults = async () => {
     try {
@@ -57,8 +61,7 @@ export default function Dashboard() {
         }
       });
       const data = response.data;
-      setEyeResults(data.eyes);
-      setFingerprintResults(data.fingers);
+      setResults(data.results);
     } catch (error) {
       console.error("Error fetching eye results:", error);
     }
@@ -123,18 +126,18 @@ export default function Dashboard() {
 
         <ScrollView style={styles.scrollBox} contentContainerStyle={styles.scrollContent}>
           {diabeteResults.map((result, index) => (
-            <View key={index} style={styles.card}>
-              <Image
-                source={require('@/assets/images/icon.png')}
-                style={styles.avatar}
-              />
-              <View style={styles.userInfo}>
-                <Text style={styles.userText}>Email: {result.email}</Text>
-                <Text style={styles.userText}>Name {index + 1}</Text>
-                <Text style={styles.userText}>Prediction: {result.prediction}</Text>
-              </View>
-            </View>
-          ))}
+  <View key={index} style={styles.card}>
+    <Image source={require('@/assets/images/icon.png')} style={styles.avatar} />
+    <View style={styles.userInfo}>
+      <Text style={styles.userText}>Email: {result.email}</Text>
+      <Text style={styles.userText}>Prediction: {result.prediction}</Text>
+      <Text style={styles.userText}>Level: {result.level}</Text>
+      <Text style={styles.userText}>Description: {result.description}</Text>
+      <Text style={styles.userText}>Timestamp: {result.timestamp}</Text> {/* แสดง timestamp */}
+    </View>
+  </View>
+))}
+
         </ScrollView>
       </View>
     </View>
